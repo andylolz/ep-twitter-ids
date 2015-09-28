@@ -1,24 +1,35 @@
-# This is a template for a Python scraper on morph.io (https://morph.io)
-# including some code snippets below that you should find helpful
+#!/usr/bin/env python3
+import csv
+from io import StringIO
+import time
 
-# import scraperwiki
-# import lxml.html
-#
-# # Read in a page
-# html = scraperwiki.scrape("http://foo.com")
-#
-# # Find something on the page using css selectors
-# root = lxml.html.fromstring(html)
-# root.cssselect("div[align='left']")
-#
-# # Write out to the sqlite database using scraperwiki library
-# scraperwiki.sqlite.save(unique_keys=['name'], data={"name": "susan", "occupation": "software developer"})
-#
-# # An arbitrary query against the database
-# scraperwiki.sql.select("* from data where 'name'='peter'")
+import requests
+import scraperwiki
 
-# You don't have to do things with the ScraperWiki and lxml libraries.
-# You can use whatever libraries you want: https://morph.io/documentation/python
-# All that matters is that your final data is written to an SQLite database
-# called "data.sqlite" in the current working directory which has at least a table
-# called "data".
+
+url = 'https://raw.githubusercontent.com/everypolitician/viewer-sinatra/master/DATASOURCE'
+countries_url = requests.get(url).text
+j = requests.get(countries_url).json()
+
+tmpl = 'https://raw.githubusercontent.com/everypolitician/everypolitician-data/{sha}/{path}'
+for country in j:
+    print(country['name'])
+    for legislature in country['legislatures']:
+        leg_handles = {}
+        for period in legislature['legislative_periods']:
+            data = requests.get(tmpl.format(
+                sha=legislature['sha'],
+                path=period['csv'])).text
+            time.sleep(0.5)
+            reader = csv.DictReader(StringIO(data))
+            for x in reader:
+                if x['twitter'] == '':
+                    continue
+                leg_handles[x['id']] = {
+                    'person_id': x['id'],
+                    'country_code': country['code'],
+                    'legislature_slug': legislature['slug'],
+                    'twitter_handle': x['twitter'],
+                }
+        if leg_handles:
+            scraperwiki.sqlite.save(["person_id", "country_code", "legislature_slug"], leg_handles.values(), "data")
