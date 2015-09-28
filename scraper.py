@@ -30,7 +30,18 @@ for country in j:
                     'person_id': x['id'].decode('utf8'),
                     'country_code': country['code'].decode('utf8'),
                     'legislature_slug': legislature['slug'].decode('utf8'),
-                    'twitter_handle': x['twitter'].decode('utf8'),
+                    'twitter_handle': x['twitter'],
                 }
         if leg_handles:
             scraperwiki.sqlite.save(["person_id", "country_code", "legislature_slug"], leg_handles.values(), "data")
+
+consumer_key = os.environ.get('TWITTER_CONSUMER_KEY')
+consumer_secret = os.environ.get('TWITTER_CONSUMER_SECRET')
+access_token = os.environ.get('TWITTER_ACCESS_TOKEN')
+access_token_secret = os.environ.get('TWITTER_ACCESS_TOKEN_SECRET')
+
+t = Twitter(auth=OAuth(access_token, access_token_secret, consumer_key, consumer_secret))
+
+# leg_handles = scraperwiki.sqlite.select('* from data')
+handles = [x['twitter_handle'] for x in leg_handles.values()]
+ids = [x['id'] for x in t.users.lookup(screen_name=','.join(handles[:100]), _timeout=1)]
