@@ -1,16 +1,18 @@
 import csv
+import os
 from StringIO import StringIO
 import time
 
 import requests
 import scraperwiki
+from twitter import Twitter, OAuth
 
 
-url = 'https://raw.githubusercontent.com/everypolitician/viewer-sinatra/master/DATASOURCE'
-countries_url = requests.get(url).text
-j = requests.get(countries_url).json()
+base_url = 'https://raw.githubusercontent.com/everypolitician/everypolitician-data'
+url = base_url + '/master/countries.json'
+j = requests.get(url).json()
 
-tmpl = 'https://raw.githubusercontent.com/everypolitician/everypolitician-data/{sha}/{path}'
+tmpl = base_url + '/{sha}/{path}'
 for country in j:
     print(country['name'].encode('utf8'))
     for legislature in country['legislatures']:
