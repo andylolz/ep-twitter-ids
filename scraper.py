@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import csv
 import os
+os.environ['SCRAPERWIKI_DATABASE_NAME'] = 'sqlite:///data.sqlite'
 from io import StringIO
 import time
 
