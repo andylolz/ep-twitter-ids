@@ -37,10 +37,10 @@ for country in j:
         if leg_handles:
             scraperwiki.sqlite.save(["person_id", "country_code", "legislature_slug"], leg_handles.values(), "data")
 
-consumer_key = os.environ.get('TWITTER_CONSUMER_KEY')
-consumer_secret = os.environ.get('TWITTER_CONSUMER_SECRET')
-access_token = os.environ.get('TWITTER_ACCESS_TOKEN')
-access_token_secret = os.environ.get('TWITTER_ACCESS_TOKEN_SECRET')
+consumer_key = os.environ.get('MORPH_TWITTER_CONSUMER_KEY')
+consumer_secret = os.environ.get('MORPH_TWITTER_CONSUMER_SECRET')
+access_token = os.environ.get('MORPH_TWITTER_ACCESS_TOKEN')
+access_token_secret = os.environ.get('MORPH_TWITTER_ACCESS_TOKEN_SECRET')
 
 t = Twitter(auth=OAuth(access_token, access_token_secret, consumer_key, consumer_secret))
 
