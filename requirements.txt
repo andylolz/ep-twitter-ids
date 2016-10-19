@@ -1,3 +1,2 @@
 scraperwiki
 requests
-twitter
