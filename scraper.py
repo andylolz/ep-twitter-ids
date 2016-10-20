@@ -53,6 +53,7 @@ countries = requests.get(ep_root_url + 'countries.json').json()
 twitter_data = {}
 # get the routes to all the popolo files
 for country in countries:
+    print(country['name'])
     for legislature in country['legislatures']:
         popolo_url = legislature['popolo_url']
         people = requests.get(popolo_url).json()['persons']
@@ -78,6 +79,7 @@ auth_header = {'Authorization': 'Bearer {token}'.format(token=token)}
 handles_with_ids = [v['twitter_id'] for k, v in twitter_data.items() if v['twitter_id']]
 for lower in range(0, len(handles_with_ids), 100):
     updates = {}
+    print('{} to {}'.format(lower, lower + 100))
     user_ids = ','.join(handles_with_ids[lower:lower + 100])
     payload = {'user_id': user_ids}
     data = _run_query(payload)
