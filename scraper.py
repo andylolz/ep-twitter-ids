@@ -103,7 +103,9 @@ for x in ep_data_with_ids.values():
             id_=x['twitter_id'],
             handle=x['handle'],
         ))
-        updates.append({'person_id': x['person_id']})
+        updates.append({
+            'id': x['person_id'],
+        })
     else:
         new_handle = api_response_data[x['twitter_id']]['screen_name']
         if x['handle'] != new_handle:
@@ -113,9 +115,10 @@ for x in ep_data_with_ids.values():
                 new=new_handle,
             ))
         updates.append({
-            'person_id': x['person_id'],
-            'twitter_id': x['twitter_id'],
-            'handle': new_handle,
+            'id': x['person_id'],
+            'identifier__twitter': x['twitter_id'],
+            'contact_detail__twitter': new_handle,
+            'link__twitter': 'https://twitter.com/{handle}'.format(handle=new_handle),
         })
 
 # 2. If we have handles, we want to find the IDs (and check handles!)
@@ -143,7 +146,9 @@ for x in ep_data_without_ids.values():
             person_id=x['person_id'],
             handle=x['handle'],
         ))
-        updates.append({'person_id': x['person_id']})
+        updates.append({
+            'id': x['person_id'],
+        })
     else:
         current_twitter_user = api_response_data[x['handle'].lower()]
         new_handle = current_twitter_user['screen_name']
@@ -160,9 +165,10 @@ for x in ep_data_without_ids.values():
             new=new_handle,
         ))
         updates.append({
-            'person_id': x['person_id'],
-            'twitter_id': new_twitter_id,
-            'handle': new_handle,
+            'id': x['person_id'],
+            'identifier__twitter': new_twitter_id,
+            'contact_detail__twitter': new_handle,
+            'link__twitter': 'https://twitter.com/{handle}'.format(handle=new_handle),
         })
 
-scraperwiki.sqlite.save(['person_id'], updates, "data")
+scraperwiki.sqlite.save(['id'], updates, "data")
