@@ -3,7 +3,7 @@ import itertools
 import os
 import time
 
-# hack to override sqlite database filename
+# hack to override sqlite database filename in python3
 # see: https://help.morph.io/t/using-python-3-with-morph-scraperwiki-fork/148
 os.environ['SCRAPERWIKI_DATABASE_NAME'] = 'sqlite:///data.sqlite'
 
@@ -12,13 +12,14 @@ import scraperwiki
 
 
 # TODO: Use git to fetch the data repo
-# (rather than lotsa of requests)
+# (rather than lots of requests)
 
 ep_root_url = 'https://cdn.rawgit.com/everypolitician/everypolitician-data/master/'
 
 consumer_key = os.environ.get('MORPH_TWITTER_CONSUMER_KEY')
 consumer_secret = os.environ.get('MORPH_TWITTER_CONSUMER_SECRET')
 
+# get a bearer token from twitter
 def _get_token(consumer_key, consumer_secret):
     auth = requests.auth.HTTPBasicAuth(consumer_key, consumer_secret)
     auth_url = 'https://api.twitter.com/oauth2/token'
@@ -27,6 +28,7 @@ def _get_token(consumer_key, consumer_secret):
     j = r.json()
     return j['access_token']
 
+# Run twitter API query
 def _run_query(payload):
     r = requests.post(
         'https://api.twitter.com/1.1/users/lookup.json',
@@ -47,63 +49,128 @@ def _run_query(payload):
         return None
     return data
 
-# get all the countries
-countries = requests.get(ep_root_url + 'countries.json').json()
-
-twitter_data = {}
-# get the routes to all the popolo files
-for country in countries:
-    print(country['name'])
-    for legislature in country['legislatures']:
-        popolo_url = legislature['popolo_url']
-        people = requests.get(popolo_url).json()['persons']
-        time.sleep(0.5)
-        # build a list of twitter handles for every legislature
-        for person in people:
-            twitter_handles = [contact_detail['value'] for contact_detail in person.get('contact_details', []) if contact_detail['type'] == 'twitter']
-            twitter_ids = [identifier['identifier'] for identifier in person.get('identifiers', []) if identifier['scheme'] == 'twitter']
-            for handle, id_ in itertools.zip_longest(twitter_handles, twitter_ids):
-                twitter_data[handle.lower()] = {
-                    'country_code': country['code'],
-                    'legislature_slug': legislature['slug'],
-                    'person_id': person['id'],
-                    'handle': handle,
-                    'twitter_id': id_,
-                }
-
 # auth stuff
 token = _get_token(consumer_key, consumer_secret)
 auth_header = {'Authorization': 'Bearer {token}'.format(token=token)}
 
+# get all the countries
+countries = requests.get(ep_root_url + 'countries.json').json()
+
+ep_twitter_data = []
+# get the routes to all the popolo files
+for country in countries:
+    print('Fetching EP data for {country_name} ...'.format(country_name=country['name']))
+    for legislature in country['legislatures']:
+        popolo_url = legislature['popolo_url']
+        people = requests.get(popolo_url).json()['persons']
+        time.sleep(0.5)
+        # build a list of all the twitter on EP
+        for person in people:
+            twitter_handles = [contact_detail['value'] for contact_detail in person.get('contact_details', []) if contact_detail['type'] == 'twitter']
+            twitter_ids = [identifier['identifier'] for identifier in person.get('identifiers', []) if identifier['scheme'] == 'twitter']
+            for handle, id_ in itertools.zip_longest(twitter_handles, twitter_ids):
+                ep_twitter_data.append({
+                    # 'country_code': country['code'],
+                    # 'legislature_slug': legislature['slug'],
+                    'person_id': person['id'],
+                    'handle': handle,
+                    'twitter_id': id_,
+                })
+
+updates = []
+
 # 1. If we have IDs, we want to check handles
-handles_with_ids = [v['twitter_id'] for k, v in twitter_data.items() if v['twitter_id']]
-for lower in range(0, len(handles_with_ids), 100):
-    updates = {}
-    print('{} to {}'.format(lower, lower + 100))
-    user_ids = ','.join(handles_with_ids[lower:lower + 100])
+ep_data_with_ids = {v['twitter_id']: v for v in ep_twitter_data if v['twitter_id']}
+ids_to_check = list(ep_data_with_ids.keys())
+api_response_data = {}
+for lower in range(0, len(ids_to_check), 100):
+    print('Fetching twitter data: {lower:,} to {upper:,} of {len:,} IDs ...'.format(
+        lower=lower + 1, upper=lower + 100, len=len(ids_to_check)
+    ))
+    user_ids = ','.join(ids_to_check[lower:lower + 100])
     payload = {'user_id': user_ids}
-    data = _run_query(payload)
-    if not data:
+    api_response_data_partial = _run_query(payload)
+    if not api_response_data_partial:
         continue
-    for x in data:
-        handle_lookup = x['screen_name'].lower()
-        updates[handle_lookup] = twitter_data[handle_lookup]
-        updates[handle_lookup]['handle'] = x['screen_name']
-    scraperwiki.sqlite.save(['twitter_id'], updates.values(), "data")
+    api_response_data.update({x['id']: x for x in api_response_data_partial})
+
+for x in ep_data_with_ids.values():
+    if x['twitter_id'] not in api_response_data:
+        # hmm - this account may have been deleted.
+        # Remove the twitter ID and handle
+        print('{person_id}: Twitter ID {id_} (@{handle}) not found.'.format(
+            person_id=x['person_id'],
+            id_=x['twitter_id'],
+            handle=x['handle'],
+        ))
+        updates.append({
+            'person_id': x['person_id'],
+            'twitter_id': '',
+            'handle': '',
+        })
+    else:
+        new_handle = api_response_data[x['twitter_id']]['screen_name']
+        if x['handle'] != new_handle:
+            print('{person_id}: Handle changed from @{old} to @{new}'.format(
+                person_id=x['person_id'],
+                old=x['handle'],
+                new=new_handle,
+            ))
+        updates.append({
+            'person_id': x['person_id'],
+            'twitter_id': x['twitter_id'],
+            'handle': new_handle,
+        })
 
 # 2. If we have handles, we want to find the IDs (and check handles!)
-handles_without_ids = [v['handle'] for k, v in twitter_data.items() if not v['twitter_id']]
-for lower in range(0, len(handles_without_ids), 100):
-    updates = {}
-    print('{} to {}'.format(lower, lower + 100))
-    screen_names = ','.join(handles_without_ids[lower:lower + 100])
+ep_data_without_ids = {v['handle']: v for v in ep_twitter_data if not v['twitter_id']}
+ids_to_find = list(ep_data_without_ids.keys())
+api_response_data = {}
+for lower in range(0, len(ids_to_find), 100):
+    print('Fetching twitter data: {lower:,} to {upper:,} of {len:,} handles ...'.format(
+        lower=lower + 1, upper=lower + 100, len=len(ids_to_find)
+    ))
+    screen_names = ','.join(ids_to_find[lower:lower + 100])
     payload = {'screen_name': screen_names}
-    data = _run_query(payload)
-    if not data:
+    api_response_data_partial = _run_query(payload)
+    if not api_response_data_partial:
         continue
-    for x in data:
-        handle_lookup = x['screen_name'].lower()
-        updates[handle_lookup] = twitter_data[handle_lookup]
-        updates[handle_lookup]['twitter_id'] = x['id']
-        updates[handle_lookup]['handle'] = x['screen_name']
-    scraperwiki.sqlite.save(['twitter_id'], updates.values(), "data")
+    api_response_data.update({
+        x['screen_name'].lower(): x for x in api_response_data_partial
+    })
+
+for x in ep_data_without_ids.values():
+    if x['handle'].lower() not in api_response_data:
+        # hmm - this account may have been deleted.
+        # Remove the twitter ID and handle
+        print('{person_id}: Twitter handle @{handle} not found.'.format(
+            person_id=x['person_id'],
+            handle=x['handle'],
+        ))
+        updates.append({
+            'person_id': x['person_id'],
+            'twitter_id': '',
+            'handle': '',
+        })
+    else:
+        current_twitter_user = api_response_data[x['handle'].lower()]
+        new_handle = current_twitter_user['screen_name']
+        new_twitter_id = current_twitter_user['id']
+        if x['handle'] != new_handle:
+            print('{person_id}: Handle changed from @{old} to @{new}'.format(
+                person_id=x['person_id'],
+                old=x['handle'],
+                new=new_handle,
+            ))
+        print('{person_id}: Twitter ID {id_} added (@{new})'.format(
+            person_id=x['person_id'],
+            id_=new_twitter_id,
+            new=new_handle,
+        ))
+        updates.append({
+            'person_id': x['person_id'],
+            'twitter_id': new_twitter_id,
+            'handle': new_handle,
+        })
+
+scraperwiki.sqlite.save(['person_id'], updates, "data")
