@@ -103,11 +103,7 @@ for x in ep_data_with_ids.values():
             id_=x['twitter_id'],
             handle=x['handle'],
         ))
-        updates.append({
-            'person_id': x['person_id'],
-            'twitter_id': '',
-            'handle': '',
-        })
+        updates.append({'person_id': x['person_id']})
     else:
         new_handle = api_response_data[x['twitter_id']]['screen_name']
         if x['handle'] != new_handle:
@@ -147,11 +143,7 @@ for x in ep_data_without_ids.values():
             person_id=x['person_id'],
             handle=x['handle'],
         ))
-        updates.append({
-            'person_id': x['person_id'],
-            'twitter_id': '',
-            'handle': '',
-        })
+        updates.append({'person_id': x['person_id']})
     else:
         current_twitter_user = api_response_data[x['handle'].lower()]
         new_handle = current_twitter_user['screen_name']
