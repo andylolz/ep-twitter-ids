@@ -89,7 +89,7 @@ for lower in range(0, len(handles_with_ids), 100):
         handle_lookup = x['screen_name'].lower()
         updates[handle_lookup] = twitter_data[handle_lookup]
         updates[handle_lookup]['handle'] = x['screen_name']
-    scraperwiki.sqlite.save(['handle'], updates.values(), "data")
+    scraperwiki.sqlite.save(['twitter_id'], updates.values(), "data")
 
 # 2. If we have handles, we want to find the IDs (and check handles!)
 handles_without_ids = [v['handle'] for k, v in twitter_data.items() if not v['twitter_id']]
@@ -106,4 +106,4 @@ for lower in range(0, len(handles_without_ids), 100):
         updates[handle_lookup] = twitter_data[handle_lookup]
         updates[handle_lookup]['twitter_id'] = x['id']
         updates[handle_lookup]['handle'] = x['screen_name']
-    scraperwiki.sqlite.save(['handle'], updates.values(), "data")
+    scraperwiki.sqlite.save(['twitter_id'], updates.values(), "data")
