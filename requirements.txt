@@ -1,2 +1,4 @@
 scraperwiki
 requests
+everypolitician
+everypolitician-popolo==0.0.2

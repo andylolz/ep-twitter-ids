@@ -7,14 +7,12 @@ import time
 # see: https://help.morph.io/t/using-python-3-with-morph-scraperwiki-fork/148
 os.environ['SCRAPERWIKI_DATABASE_NAME'] = 'sqlite:///data.sqlite'
 
+from everypolitician import EveryPolitician
 import requests
 import scraperwiki
 
 
-# TODO: Use git to fetch the data repo
-# (rather than lots of requests)
-
-ep_root_url = 'https://cdn.rawgit.com/everypolitician/everypolitician-data/master/'
+ep = EveryPolitician()
 
 consumer_key = os.environ.get('MORPH_TWITTER_CONSUMER_KEY')
 consumer_secret = os.environ.get('MORPH_TWITTER_CONSUMER_SECRET')
@@ -53,15 +51,14 @@ def _run_query(payload):
 token = _get_token(consumer_key, consumer_secret)
 auth_header = {'Authorization': 'Bearer {token}'.format(token=token)}
 
-# get all the countries
-countries = requests.get(ep_root_url + 'countries.json').json()
+ep = EveryPolitician()
 
 ep_twitter_data = []
 # get the routes to all the popolo files
-for country in countries:
-    print('Fetching EP data for {country_name} ...'.format(country_name=country['name']))
-    for legislature in country['legislatures']:
-        popolo_url = legislature['popolo_url']
+for country in ep.countries():
+    print('Fetching EP data for {country_name} ...'.format(country_name=country.name))
+    for legislature in country.legislatures():
+        popolo_url = legislature.popolo_url
         people = requests.get(popolo_url).json()['persons']
         time.sleep(0.5)
         # build a list of all the twitter on EP
@@ -70,8 +67,8 @@ for country in countries:
             twitter_ids = [identifier['identifier'] for identifier in person.get('identifiers', []) if identifier['scheme'] == 'twitter']
             for handle, id_ in itertools.zip_longest(twitter_handles, twitter_ids):
                 ep_twitter_data.append({
-                    # 'country_code': country['code'],
-                    # 'legislature_slug': legislature['slug'],
+                    # 'country_code': country.code,
+                    # 'legislature_slug': legislature.slug,
                     'person_id': person['id'],
                     'handle': handle,
                     'twitter_id': id_,
