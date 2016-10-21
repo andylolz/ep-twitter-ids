@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import itertools
 import os
-import time
 
 from everypolitician import EveryPolitician
+from popolo_data.base import MultipleObjectsReturned
 import requests
 import scraperwiki
 
@@ -30,7 +30,6 @@ def _run_query(payload):
         headers=auth_header,
     )
     data = r.json()
-    time.sleep(0.5)
     if r.status_code != 200:
         if data.get('errors'):
             for error in data['errors']:
@@ -54,21 +53,30 @@ ep_twitter_data = []
 for country in ep.countries():
     print('Fetching EP data for {country_name} ...'.format(country_name=country.name))
     for legislature in country.legislatures():
-        popolo_url = legislature.popolo_url
-        people = requests.get(popolo_url).json()['persons']
-        time.sleep(0.5)
         # build a list of all the twitter on EP
-        for person in people:
-            twitter_handles = [contact_detail['value'] for contact_detail in person.get('contact_details', []) if contact_detail['type'] == 'twitter']
-            twitter_ids = [identifier['identifier'] for identifier in person.get('identifiers', []) if identifier['scheme'] == 'twitter']
-            for handle, id_ in itertools.zip_longest(twitter_handles, twitter_ids):
-                ep_twitter_data.append({
-                    # 'country_code': country.code,
-                    # 'legislature_slug': legislature.slug,
-                    'person_id': person['id'],
-                    'handle': handle,
-                    'twitter_id': id_,
-                })
+        for person in legislature.popolo().persons:
+            try:
+                if person.identifier('twitter') or person.twitter:
+                    ep_twitter_data.append({
+                        # 'country_code': country.code,
+                        # 'legislature_slug': legislature.slug,
+                        'person_id': person.id,
+                        'handle': person.twitter,
+                        'twitter_id': person.identifier('twitter'),
+                    })
+            except MultipleObjectsReturned:
+                # fallback if there are multiple twitter handles.
+                #
+                # NB this assumes the identifier ordering and
+                # contact detail ordering is the same!
+                twitter_handles = [contact_detail['value'] for contact_detail in person.data.get('contact_details', []) if contact_detail['type'] == 'twitter']
+                twitter_ids = [identifier['identifier'] for identifier in person.data.get('identifiers', []) if identifier['scheme'] == 'twitter']
+                for handle, id_ in itertools.zip_longest(twitter_handles, twitter_ids):
+                    ep_twitter_data.append({
+                        'person_id': person.id,
+                        'handle': handle,
+                        'twitter_id': id_,
+                    })
 
 updates = []
 
