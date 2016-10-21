@@ -172,4 +172,5 @@ for x in ep_data_without_ids.values():
             'link__twitter': 'https://twitter.com/{handle}'.format(handle=new_handle),
         })
 
-scraperwiki.sqlite.save(['id'], updates, "data")
+scraperwiki.sqlite.drop()
+scraperwiki.sqlite.save(['id', 'identifier__twitter'], updates)
