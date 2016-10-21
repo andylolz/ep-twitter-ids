@@ -3,10 +3,6 @@ import itertools
 import os
 import time
 
-# hack to override sqlite database filename in python3
-# see: https://help.morph.io/t/using-python-3-with-morph-scraperwiki-fork/148
-os.environ['SCRAPERWIKI_DATABASE_NAME'] = 'sqlite:///data.sqlite'
-
 from everypolitician import EveryPolitician
 import requests
 import scraperwiki
