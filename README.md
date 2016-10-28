@@ -18,6 +18,17 @@ For every Twitter handle in EveryPolitician that _doesn’t_ have a correspondin
 
  * If a Twitter ID is returned by the API, a record is added to the output. If the Twitter handle is the same, the status will be `twitter id added`. If the Twitter handle has changed (i.e. case differences), the status will be `twitter id added; twitter handle updated`.
 
+### Sample output
+
+id | twitter_id | twitter_handle | old_twitter_handle | status
+---|------------|----------------|--------------------|-------
+96b684de-8474-4245-bdc3-3696e6e854f8 | 975596996 |  | bghattas | twitter id not found
+d3889951-f3b1-42cc-a626-df9c620ef24c | 26279847 | ChrisCharlton00 | chrischarltonmp | twitter handle updated
+d0e0f592-3578-49aa-aa20-41f73e3fb7ea | 117777690 | jeremycorbyn |  | no change
+9f7a9b94-de99-406c-a45e-2f5524aec912 |  |  | Gumi_Kimtw | twitter handle not found
+ead00127-d132-40df-a7f9-a134ac7bdad2 | 259148388 | JanePrentice_MP |  | twitter id added
+e4c72516-f553-4b6a-9744-2abe4b08f773 | 109579534 | EliseStefanik | elisestefanik | twitter id added; twitter handle updated
+
 ### Installation
 
 Requires python3 & SQLite.
