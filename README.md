@@ -51,4 +51,4 @@ python scraper.py
 
 ### Data
 
-This script [runs over here on Morph.io](https://morph.io/andylolz/ep-Twitter-ids). You can fetch the output there.
+This script [runs over here on Morph.io](https://morph.io/andylolz/ep-twitter-ids). You can fetch the output there.
