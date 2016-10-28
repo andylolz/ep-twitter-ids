@@ -115,12 +115,12 @@ for x in ep_data_with_ids.values():
                 old=x['handle'],
                 new=new_handle,
             ))
-        updates.append({
-            'id': x['person_id'],
-            'identifier__twitter': x['twitter_id'],
-            'contact_detail__twitter': new_handle,
-            'link__twitter': 'https://twitter.com/{handle}'.format(handle=new_handle),
-        })
+            updates.append({
+                'id': x['person_id'],
+                'identifier__twitter': x['twitter_id'],
+                'contact_detail__twitter': new_handle,
+                'link__twitter': 'https://twitter.com/{handle}'.format(handle=new_handle),
+            })
 
 # 2. If we have handles, we want to find the IDs (and check handles!)
 ep_data_without_ids = {v['handle']: v for v in ep_twitter_data if not v['twitter_id']}
