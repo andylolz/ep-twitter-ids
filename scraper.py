@@ -53,7 +53,7 @@ ep_twitter_data = []
 for country in ep.countries():
     print('Fetching EP data for {country_name} ...'.format(country_name=country.name))
     for legislature in country.legislatures():
-        # build a list of all the twitter on EP
+        # build a list of all the Twitter handles & IDs on EveryPolitician
         for person in legislature.popolo().persons:
             try:
                 if person.identifier('twitter') or person.twitter:
@@ -65,10 +65,10 @@ for country in ep.countries():
                         'twitter_id': person.identifier('twitter'),
                     })
             except MultipleObjectsReturned:
-                # fallback if there are multiple twitter handles.
+                # fallback if there are multiple Twitter handles.
                 #
-                # NB this assumes the identifier ordering and
-                # contact detail ordering is the same!
+                # TODO this currently assumes the identifier ordering
+                # and contact detail ordering is the same! :\
                 twitter_handles = [contact_detail['value'] for contact_detail in person.data.get('contact_details', []) if contact_detail['type'] == 'twitter']
                 twitter_ids = [identifier['identifier'] for identifier in person.data.get('identifiers', []) if identifier['scheme'] == 'twitter']
                 for handle, id_ in itertools.zip_longest(twitter_handles, twitter_ids):
@@ -97,8 +97,13 @@ for lower in range(0, len(ids_to_check), 100):
 
 for x in ep_data_with_ids.values():
     if x['twitter_id'] not in api_response_data:
-        # hmm - this account may have been deleted.
-        # Remove the twitter ID and handle
+        # Twitter ID not found - this account may have been
+        # deleted or suspended
+        #
+        # TODO this assumes the stored ID matches the stored handle,
+        # but this is not necessarily the case (the handle may have
+        # subsequently been updated.) After the ID lookup fails,
+        # we should really do an API lookup on the handle.
         print('{person_id}: Twitter ID {id_} (@{handle}) not found.'.format(
             person_id=x['person_id'],
             id_=x['twitter_id'],
@@ -106,6 +111,10 @@ for x in ep_data_with_ids.values():
         ))
         updates.append({
             'id': x['person_id'],
+            'twitter_id': x['twitter_id'],
+            'twitter_handle': None,
+            'old_twitter_handle': x['handle'],
+            'status': 'twitter id not found',
         })
     else:
         new_handle = api_response_data[x['twitter_id']]['screen_name']
@@ -115,12 +124,18 @@ for x in ep_data_with_ids.values():
                 old=x['handle'],
                 new=new_handle,
             ))
-            updates.append({
-                'id': x['person_id'],
-                'identifier__twitter': x['twitter_id'],
-                'contact_detail__twitter': new_handle,
-                'link__twitter': 'https://twitter.com/{handle}'.format(handle=new_handle),
-            })
+            status = 'twitter handle updated'
+            old_twitter_handle = x['handle']
+        else:
+            status = 'no change'
+            old_twitter_handle = None
+        updates.append({
+            'id': x['person_id'],
+            'twitter_id': x['twitter_id'],
+            'twitter_handle': new_handle,
+            'old_twitter_handle': old_twitter_handle,
+            'status': status,
+        })
 
 # 2. If we have handles, we want to find the IDs (and check handles!)
 ep_data_without_ids = {v['handle']: v for v in ep_twitter_data if not v['twitter_id']}
@@ -142,13 +157,17 @@ for lower in range(0, len(ids_to_find), 100):
 for x in ep_data_without_ids.values():
     if x['handle'].lower() not in api_response_data:
         # hmm - this account may have been deleted.
-        # Remove the twitter ID and handle
+        # Remove the Twitter ID and handle
         print('{person_id}: Twitter handle @{handle} not found.'.format(
             person_id=x['person_id'],
             handle=x['handle'],
         ))
         updates.append({
             'id': x['person_id'],
+            'twitter_id': None,
+            'twitter_handle': None,
+            'old_twitter_handle': x['handle'],
+            'status': 'twitter handle not found',
         })
     else:
         current_twitter_user = api_response_data[x['handle'].lower()]
@@ -160,6 +179,11 @@ for x in ep_data_without_ids.values():
                 old=x['handle'],
                 new=new_handle,
             ))
+            status = 'twitter id added; twitter handle updated'
+            old_twitter_handle = x['handle']
+        else:
+            status = 'twitter id added'
+            old_twitter_handle = None
         print('{person_id}: Twitter ID {id_} added (@{new})'.format(
             person_id=x['person_id'],
             id_=new_twitter_id,
@@ -167,10 +191,12 @@ for x in ep_data_without_ids.values():
         ))
         updates.append({
             'id': x['person_id'],
-            'identifier__twitter': new_twitter_id,
-            'contact_detail__twitter': new_handle,
-            'link__twitter': 'https://twitter.com/{handle}'.format(handle=new_handle),
+            'twitter_id': new_twitter_id,
+            'twitter_handle': new_handle,
+            'old_twitter_handle': old_twitter_handle,
+            'status': status,
         })
 
+# we always bin the old database, to get rid of all stale data.
 scraperwiki.sqlite.drop()
-scraperwiki.sqlite.save(['id', 'identifier__twitter'], updates)
+scraperwiki.sqlite.save(['id', 'twitter_id'], updates)
