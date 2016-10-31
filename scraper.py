@@ -3,7 +3,6 @@ import itertools
 import os
 
 from everypolitician import EveryPolitician
-from popolo_data.base import MultipleObjectsReturned
 import requests
 import scraperwiki
 
@@ -59,28 +58,14 @@ for country in ep.countries():
     for legislature in country.legislatures():
         # build a list of all the Twitter handles & IDs on EveryPolitician
         for person in legislature.popolo().persons:
-            try:
-                if person.identifier('twitter') or person.twitter:
-                    ep_twitter_data.append({
-                        # 'country_code': country.code,
-                        # 'legislature_slug': legislature.slug,
-                        'person_id': person.id,
-                        'handle': person.twitter,
-                        'twitter_id': person.identifier('twitter'),
-                    })
-            except MultipleObjectsReturned:
-                # fallback if there are multiple Twitter handles.
-                #
-                # TODO this currently assumes the identifier ordering
-                # and contact detail ordering is the same! :\
-                twitter_handles = [contact_detail['value'] for contact_detail in person.data.get('contact_details', []) if contact_detail['type'] == 'twitter']
-                twitter_ids = [identifier['identifier'] for identifier in person.data.get('identifiers', []) if identifier['scheme'] == 'twitter']
-                for handle, id_ in itertools.zip_longest(twitter_handles, twitter_ids):
-                    ep_twitter_data.append({
-                        'person_id': person.id,
-                        'handle': handle,
-                        'twitter_id': id_,
-                    })
+            twitter_handles = person.twitter_all
+            twitter_ids = person.identifier_values('twitter')
+            for handle, id_ in itertools.zip_longest(twitter_handles, twitter_ids):
+                ep_twitter_data.append({
+                    'person_id': person.id,
+                    'handle': handle,
+                    'twitter_id': id_,
+                })
 
 updates = []
 
