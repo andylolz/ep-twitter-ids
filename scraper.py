@@ -43,6 +43,10 @@ def _run_query(payload):
     return data
 
 # auth stuff
+if not consumer_key:
+    raise Exception("Please set env variable: MORPH_TWITTER_CONSUMER_KEY")
+if not consumer_secret:
+    raise Exception("Please set env variable: MORPH_TWITTER_CONSUMER_SECRET")
 token = _get_token(consumer_key, consumer_secret)
 auth_header = {'Authorization': 'Bearer {token}'.format(token=token)}
 
