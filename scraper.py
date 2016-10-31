@@ -60,6 +60,8 @@ for country in ep.countries():
         for person in legislature.popolo().persons:
             twitter_handles = person.twitter_all
             twitter_ids = person.identifier_values('twitter')
+            # TODO this assumes identifier ordering
+            # and contact detail ordering is the same! :\
             for handle, id_ in itertools.zip_longest(twitter_handles, twitter_ids):
                 ep_twitter_data.append({
                     'person_id': person.id,
